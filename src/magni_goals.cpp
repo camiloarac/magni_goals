@@ -10,15 +10,21 @@ MagniGoals::MagniGoals() {
         new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>(
             "move_base", true));
 
-    nh.param<double>("turning_time", turning_time_, 20.0);
+    double step_size_deg{};
+    double step_vel_deg{};
+    nh.param<double>("step_size", step_size_deg, 90.0);
+    nh.param<double>("time_at_step", time_at_step_, 1.0);
+    nh.param<double>("step_vel", step_vel_deg, 90.0);
+
+    step_size_ = step_size_deg * PI / 180.0;
+    step_vel_ = step_vel_deg * PI / 180.0;
 
     goal_.target_pose.header.frame_id = "map";
     goal_.target_pose.pose.position.z = 0.0;
 
-    waypoints_ = {{6.0, -6.0, PI},
-                  {-0.9, -6.0, PI / 2.0},
-                  {-0.9, -2.0, 0.0},
-                  {6.0, -2.0, -PI / 2.0}};
+    waypoints_ = {{6.0, -4.0, -PI / 2.0}, {6.0, -6.0, PI},
+                  {2.55, -6.0, PI},       {-0.9, -6.0, PI / 2.0},
+                  {-0.9, -2.0, 0.0},      {6.0, -2.0, -PI / 2.0}};
 }
 
 void MagniGoals::setPosition(const double& x, const double& y) {
@@ -59,14 +65,23 @@ void MagniGoals::sendAngularSpeed(const double& angular) {
     vel_pub_.publish(msg);
 }
 
-void MagniGoals::turnAround(const double& desired_yaw) {
-    ros::Time time_to_stop{ros::Time::now() + ros::Duration(turning_time_)};
-    // TODO: rotation_angle should be the difference between the current yaw and
-    // the desired_yaw
-    double rotation_angle{2 * PI};
-    double speed{rotation_angle / turning_time_};
-    while (ros::Time::now() < time_to_stop) sendAngularSpeed(speed);
+void MagniGoals::doStep() {
+    double time_for_step = step_size_ / step_vel_;
+    ROS_INFO("Time for the step: %f", time_for_step);
+    ros::Time time_to_stop{ros::Time::now() + ros::Duration(time_for_step)};
+    while (ros::Time::now() < time_to_stop) {
+        sendAngularSpeed(step_vel_);
+        ros::Duration(0.05).sleep();
+    }
     sendAngularSpeed(0.0);
+    return;
+}
+
+void MagniGoals::turnAround(const double& desired_yaw) {
+    for (double i = 0.; i < 1.99 * PI; i += step_size_) {
+        doStep();
+        ros::Duration(time_at_step_).sleep();
+    }
     return;
 }
 

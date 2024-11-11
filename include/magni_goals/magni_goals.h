@@ -27,9 +27,12 @@ class MagniGoals {
     void sendAngularSpeed(const double& angular);
     void goToNextWaypoint(const std::array<double, 3>& waypoint);
     void turnAround(const double& desired_yaw);
+    void doStep();
 
     const double PI = 3.1415926535898;
-    double turning_time_;
+    double step_size_;
+    double time_at_step_;
+    double step_vel_;
     ros::Publisher vel_pub_;
     move_base_msgs::MoveBaseGoal goal_;
     clientType action_client_;
