@@ -61,6 +61,10 @@
   <exec_depend>actionlib_msgs</exec_depend>
   <exec_depend>move_base_msgs</exec_depend>
   <exec_depend>roscpp</exec_depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2</depend>
+  <depend>geometry_msgs</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

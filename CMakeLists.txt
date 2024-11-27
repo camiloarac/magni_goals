@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(magni_goals)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS True)
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++17)
 
@@ -8,10 +10,14 @@ add_compile_options(-std=c++17)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  tf2_geometry_msgs
+  tf2_ros
+  tf2
+  geometry_msgs
   actionlib
   actionlib_msgs
   move_base_msgs
-  roscpp
 )
 
 ###################################
@@ -28,10 +34,11 @@ catkin_package(
 #  LIBRARIES magni_goals
 #  CATKIN_DEPENDS actionlib actionlib_msgs move_base_msgs roscpp
  DEPENDS 
+  roscpp
+  geometry_msgs
   actionlib
   actionlib_msgs
   move_base_msgs
-  roscpp
 )
 
 ###########

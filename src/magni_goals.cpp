@@ -1,10 +1,13 @@
-#include "magni_goals/magni_goals.h"
+#include <geometry_msgs/Transform.h>
 
 #include <algorithm>
+#include <cmath>
 
+#include "magni_goals/magni_goals.h"
 #include "magni_goals/read_csv.h"
 
-MagniGoals::MagniGoals() {
+MagniGoals::MagniGoals()
+    : tf_buffer_(ros::Duration(3.0)), tf_listener_(tf_buffer_) {
     ros::NodeHandle nh("~");
     vel_pub_ =
         ros::Publisher(nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1));
@@ -13,13 +16,13 @@ MagniGoals::MagniGoals() {
             "move_base", true));
 
     double step_size_deg{};
-    double step_vel_deg{};
+    double max_angular_vel_deg{};
     nh.param<double>("step_size", step_size_deg, 90.0);
     nh.param<double>("time_at_step", time_at_step_, 1.0);
-    nh.param<double>("step_vel", step_vel_deg, 90.0);
+    nh.param<double>("max_angular_vel", max_angular_vel_deg, 90.0);
 
     step_size_ = step_size_deg * PI / 180.0;
-    step_vel_ = step_vel_deg * PI / 180.0;
+    max_angular_vel_ = max_angular_vel_deg * PI / 180.0;
 
     goal_.target_pose.header.frame_id = "map";
     goal_.target_pose.pose.position.z = 0.0;
@@ -75,24 +78,66 @@ void MagniGoals::sendAngularSpeed(const double& angular) {
     vel_pub_.publish(msg);
 }
 
-void MagniGoals::doStep() {
-    double time_for_step = step_size_ / step_vel_;
-    ROS_INFO("Time for the step: %f", time_for_step);
-    ros::Time time_to_stop{ros::Time::now() + ros::Duration(time_for_step)};
-    while (ros::Time::now() < time_to_stop) {
-        sendAngularSpeed(step_vel_);
-        ros::Duration(0.05).sleep();
+void MagniGoals::doRotationStep(double yaw) {
+    ros::Rate r(50);
+
+    double current_yaw{getCurrentYaw()};
+    double vel{};
+    ROS_INFO("Yaw before normalization: %f", yaw);
+    normalizeAngle(yaw);
+    ROS_INFO("Yaw after normalization: %f", yaw);
+    double error{yaw - current_yaw};
+    ROS_INFO("Error before loop: %f", error);
+    while ((std::abs(error) > kAngularErrorThreshold) && ros::ok()) {
+        r.sleep();
+        current_yaw = getCurrentYaw();
+        error = yaw - current_yaw;
+        normalizeAngle(error);
+        double sign = std::signbit(error) ? -1.0 : 1.0;
+        vel = std::min(max_angular_vel_, std::abs(error)) * sign;
+        ROS_INFO("reference: %f, current: %f, error: %f, vel: %f",
+                 yaw * 180.0 / PI, current_yaw * 180.0 / PI, error * 180.0 / PI,
+                 vel);
+        sendAngularSpeed(vel);
     }
     sendAngularSpeed(0.0);
     return;
 }
 
+double MagniGoals::getCurrentYaw() {
+    tf2::Transform tf{};
+    std::string to_frame{"map"};
+    std::string from_frame{"base_footprint"};
+    double roll{};
+    double pitch{};
+    double yaw{};
+    geometry_msgs::TransformStamped tfs =
+        tf_buffer_.lookupTransform(to_frame, from_frame, ros::Time(0));
+    // tf2::Quaternion q{tfs.transform.rotation.x, tfs.transform.rotation.y,
+    //                   tfs.transform.rotation.z, tfs.transform.rotation.w};
+    geometry_msgs::Transform geom_tf{tfs.transform};
+    tf2::fromMsg(geom_tf, tf);
+    tf.getBasis().getRPY(roll, pitch, yaw);
+    return yaw;
+}
+
 void MagniGoals::turnAround(const double& desired_yaw) {
-    for (double i = 0.; i < 1.99 * PI; i += step_size_) {
-        doStep();
+    for (double i = step_size_; i < 1.999 * PI; i += step_size_) {
+        ROS_INFO("Final goal: %f, current goal: %f", desired_yaw,
+                 desired_yaw + i);
+        doRotationStep(desired_yaw + i);
         ros::Duration(time_at_step_).sleep();
     }
     return;
+}
+
+void MagniGoals::normalizeAngle(double& yaw) {
+    if (yaw < -PI) {
+        yaw += 2 * PI;
+    }
+    if (yaw > PI) {
+        yaw -= 2 * PI;
+    }
 }
 
 void MagniGoals::run() {
@@ -104,8 +149,9 @@ void MagniGoals::run() {
     int seconds{10};
     int n_steps{5};
     for (const auto& elm : waypoints_) {
+        ROS_INFO("Waypoint: %f, %f, %f", elm[0], elm[1], elm[2]);
         goToNextWaypoint(elm);
-        turnAround(elm[2]);
+        turnAround(elm[2] * PI / 180.0);
         if (!ros::ok()) break;
     }
 }
