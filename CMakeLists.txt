@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(magni_goals)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++17)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -32,14 +32,13 @@ catkin_package(
   actionlib_msgs
   move_base_msgs
   roscpp
-
 )
 
 ###########
 ## Build ##
 ###########
 
-add_library(goals_lib src/magni_goals.cpp)
+add_library(goals_lib src/magni_goals.cpp src/read_csv.cpp)
 target_include_directories(goals_lib
   PRIVATE
     include

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "magni_goals/read_csv.h"
+
 MagniGoals::MagniGoals() {
     ros::NodeHandle nh("~");
     vel_pub_ =
@@ -22,9 +24,17 @@ MagniGoals::MagniGoals() {
     goal_.target_pose.header.frame_id = "map";
     goal_.target_pose.pose.position.z = 0.0;
 
-    waypoints_ = {{6.0, -4.0, -PI / 2.0}, {6.0, -6.0, PI},
-                  {2.55, -6.0, PI},       {-0.9, -6.0, PI / 2.0},
-                  {-0.9, -2.0, 0.0},      {6.0, -2.0, -PI / 2.0}};
+    std::ifstream file("/workspace/waypoints.csv");
+
+    CsvRow row;
+    std::array<double, 3> waypoint;
+    while (row.readNextRow(file)) {
+        auto toDouble = [](const std::string_view& input) -> double {
+            return std::stod(static_cast<std::string>(input));
+        };
+        waypoints_.push_back(
+            {toDouble(row[0]), toDouble(row[1]), toDouble(row[2])});
+    }
 }
 
 void MagniGoals::setPosition(const double& x, const double& y) {
@@ -34,7 +44,7 @@ void MagniGoals::setPosition(const double& x, const double& y) {
 
 void MagniGoals::setOrientation(const double& yaw) {
     tf2::Quaternion q;
-    q.setRPY(0., 0., yaw);
+    q.setRPY(0., 0., yaw * PI / 180.0);
     goal_.target_pose.pose.orientation.x = q.getX();
     goal_.target_pose.pose.orientation.y = q.getY();
     goal_.target_pose.pose.orientation.z = q.getZ();
@@ -96,5 +106,6 @@ void MagniGoals::run() {
     for (const auto& elm : waypoints_) {
         goToNextWaypoint(elm);
         turnAround(elm[2]);
+        if (!ros::ok()) break;
     }
 }
