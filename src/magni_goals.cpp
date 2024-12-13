@@ -36,7 +36,7 @@ MagniGoals::MagniGoals()
     goal_.target_pose.pose.position.z = 0.0;
 
     running_ = true;
-    std::ifstream file("/workspace/waypoints.csv");
+    std::ifstream file("/workspace/src/magni_goals/waypoints.csv");
 
     CsvRow row;
     std::array<double, 3> waypoint;
