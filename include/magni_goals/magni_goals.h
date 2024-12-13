@@ -36,17 +36,25 @@ class MagniGoals {
     void turnAround(const double& desired_yaw);
     void doRotationStep(double yaw);
     void normalizeAngle(double& yaw);
+    tf2::Transform getTransform();
     double getCurrentYaw();
+    auto getCurrentXY() -> std::pair<double, double>;
 
     static constexpr double PI = 3.1415926535898;
     static constexpr double kAngularErrorThreshold = PI / 180.0;
     double step_size_;
-    double time_at_step_;
+    double time_at_rotation_step_;
     double max_angular_vel_;
     ros::Publisher vel_pub_;
+    ros::Publisher digital_output_pub_;
     move_base_msgs::MoveBaseGoal goal_;
     clientType action_client_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
     std::vector<std::array<double, 3>> waypoints_;
+    std::vector<int> n_steps_;
+    std::vector<double> time_at_linear_step_;
+    std::vector<bool> output_values_;
+    std::atomic_bool output_;
+    std::atomic_bool running_;
 };

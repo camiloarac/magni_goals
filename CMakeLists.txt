@@ -31,8 +31,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS
-#  LIBRARIES magni_goals
-#  CATKIN_DEPENDS actionlib actionlib_msgs move_base_msgs roscpp
+#LIBRARIES magni_goals
+#CATKIN_DEPENDS actionlib actionlib_msgs move_base_msgs roscpp
  DEPENDS 
   roscpp
   geometry_msgs
